@@ -26,7 +26,8 @@ def main():
         st.sidebar.success('To continue select "Run the app".')
     elif app_mode == "Show the source code":
         st.code(get_file_content_as_string("script.py"))
-    elif app_mode == "Run the app":     
+    elif app_mode == "Run the app":
+        #dataSize = st.sidebar.slider("Choose the Size of the dataset to be run", 5000, 15000)
         run_the_app()
         
 def run_the_app():
@@ -96,18 +97,46 @@ def run_the_app():
     select = st.sidebar.selectbox('Affected class', ['Pedestrians', 'Cyclists', 'Motorists'])
     
     col1, col2 = st.beta_columns(2)
+    blankIndex=[''] * len(original_data)
+    original_data.index=blankIndex
     
     if select == 'Pedestrians':
         with col1:
-            st.write(original_data.query("number_of_pedestrians_injured >= 1")[["on_street_name", "number_of_pedestrians_injured"]].sort_values(by=['number_of_pedestrians_injured'], ascending=False).dropna(how="any")[:5], use_column_width=True)
+            st.write(original_data.query("number_of_pedestrians_injured >= 1")[["on_street_name", "number_of_pedestrians_injured"]]
+                     .sort_values(by=['number_of_pedestrians_injured'], ascending=False)
+                     .rename(columns={"number_of_pedestrians_injured": "Pedestrians Injured", "on_street_name":"Street Name"}, inplace=False)
+                     .dropna(how="any")[:5], use_column_width=True)
         with col2:
-            st.write(original_data.query("number_of_pedestrians_killed >= 1")[["on_street_name", "number_of_pedestrians_injured"]].sort_values(by=['number_of_pedestrians_injured'], ascending=False).dropna(how="any")[:5], use_column_width=True)    
+            st.write(original_data.query("number_of_pedestrians_killed >= 1")[["on_street_name", "number_of_pedestrians_killed"]]
+                     .sort_values(by=['number_of_pedestrians_killed'], ascending=False)
+                     .rename(columns={"number_of_pedestrians_killed": "Pedestrians Killed", "on_street_name":"Street Name"}, inplace=False)
+                     .dropna(how="any")[:5], use_column_width=True)    
 
     elif select == 'Cyclists':
-        st.write(original_data.query("number_of_cyclist_injured >= 1")[["on_street_name", "number_of_cyclist_injured"]].sort_values(by=['number_of_cyclist_injured'], ascending=False).dropna(how="any")[:5])
+        with col1:
+            st.write(original_data.query("number_of_cyclist_injured >= 1")[["on_street_name", "number_of_cyclist_injured"]]
+                     .sort_values(by=['number_of_cyclist_injured'], ascending=False)
+                     .rename(columns={"number_of_cyclist_injured": "Cyclist Injured", "on_street_name":"Street Name"}, inplace=False)
+                     .dropna(how="any")[:5])
+        with col2:
+            st.write(original_data.query("number_of_cyclist_killed >= 1")[["on_street_name", "number_of_cyclist_killed"]]
+                     .sort_values(by=['number_of_cyclist_killed'], ascending=False)
+                     .rename(columns={"number_of_cyclist_killed": "Cyclist Killed", "on_street_name":"Street Name"}, inplace=False)
+                     .dropna(how="any")[:5], use_column_width=True)
 
     else:
-        st.write(original_data.query("number_of_motorist_injured >= 1")[["on_street_name", "number_of_motorist_injured"]].sort_values(by=['number_of_motorist_injured'], ascending=False).dropna(how="any")[:5])
+        with col1:
+            st.write(original_data.query("number_of_motorist_injured >= 1")[["on_street_name", "number_of_motorist_injured"]]
+                     .sort_values(by=['number_of_motorist_injured'], ascending=False)
+                     .rename(columns={"number_of_motorist_injured": "Motorist Ijured", "on_street_name":"Street Name"}, inplace=False)
+                     .dropna(how="any")[:5])
+        with col2:
+            st.write(original_data.query("number_of_motorist_killed >= 1")[["on_street_name", "number_of_motorist_killed"]]
+                     .sort_values(by=['number_of_motorist_killed'], ascending=False)
+                     .rename(columns={"number_of_motorist_killed": "Motorist Killed", "on_street_name":"Street Name"}, inplace=False)
+                     .dropna(how="any")[:5], use_column_width=True)
+        
+    st.sidebar.write("The data size in use is %i" % (5000))
     
     
 if __name__ == "__main__":
