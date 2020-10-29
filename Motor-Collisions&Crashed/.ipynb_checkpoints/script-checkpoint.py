@@ -5,6 +5,7 @@ import pydeck as pdk
 import plotly.express as px
 import urllib
 import zipfile
+import plotly.graph_objects as go
 
 DATE_TIME = "date/time"
 DATA_URL = (
@@ -53,6 +54,7 @@ def run_the_app():
     st.header("How many collisions occur during a given time of day?")
     hour = st.sidebar.slider("Hour to look at", 0, 23)
     original_data = data
+    df = data
     data = data[data[DATE_TIME].dt.hour == hour]
     st.markdown("Vehicle collisions between %i:00 and %i:00" % (hour, (hour + 1) % 24))
 
@@ -94,49 +96,45 @@ def run_the_app():
     st.write(fig)
 
     st.header("Top 5 dangerous streets by affected class")
-    select = st.sidebar.selectbox('Affected class', ['Pedestrians', 'Cyclists', 'Motorists'])
+    select = st.sidebar.selectbox('Affected class', ['Pedestrians', 'Cyclist', 'Motorist'])
     
     col1, col2 = st.beta_columns(2)
     blankIndex=[''] * len(original_data)
     original_data.index=blankIndex
     
-    if select == 'Pedestrians':
-        with col1:
-            st.write(original_data.query("number_of_pedestrians_injured >= 1")[["on_street_name", "number_of_pedestrians_injured"]]
-                     .sort_values(by=['number_of_pedestrians_injured'], ascending=False)
-                     .rename(columns={"number_of_pedestrians_injured": "Pedestrians Injured", "on_street_name":"Street Name"}, inplace=False)
+    with col1:
+        injured_colName = "number_of_" + select.lower() + "_injured"
+        st.write(original_data.query(injured_colName + " >= 1")[["on_street_name", injured_colName]]
+                     .sort_values(by=[injured_colName], ascending=False)
+                     .rename(columns={injured_colName: select + " Injured", "on_street_name":"Street Name"}, inplace=False)
                      .dropna(how="any")[:5], use_column_width=True)
-        with col2:
-            st.write(original_data.query("number_of_pedestrians_killed >= 1")[["on_street_name", "number_of_pedestrians_killed"]]
-                     .sort_values(by=['number_of_pedestrians_killed'], ascending=False)
-                     .rename(columns={"number_of_pedestrians_killed": "Pedestrians Killed", "on_street_name":"Street Name"}, inplace=False)
+    with col2:
+        killed_colName = "number_of_" + select.lower() + "_killed"
+        st.write(original_data.query(killed_colName + " >= 1")[["on_street_name", killed_colName]]
+                     .sort_values(by=[killed_colName], ascending=False)
+                     .rename(columns={killed_colName: select + " Killed", "on_street_name":"Street Name"}, inplace=False)
                      .dropna(how="any")[:5], use_column_width=True)    
 
-    elif select == 'Cyclists':
-        with col1:
-            st.write(original_data.query("number_of_cyclist_injured >= 1")[["on_street_name", "number_of_cyclist_injured"]]
-                     .sort_values(by=['number_of_cyclist_injured'], ascending=False)
-                     .rename(columns={"number_of_cyclist_injured": "Cyclist Injured", "on_street_name":"Street Name"}, inplace=False)
-                     .dropna(how="any")[:5])
-        with col2:
-            st.write(original_data.query("number_of_cyclist_killed >= 1")[["on_street_name", "number_of_cyclist_killed"]]
-                     .sort_values(by=['number_of_cyclist_killed'], ascending=False)
-                     .rename(columns={"number_of_cyclist_killed": "Cyclist Killed", "on_street_name":"Street Name"}, inplace=False)
-                     .dropna(how="any")[:5], use_column_width=True)
-
-    else:
-        with col1:
-            st.write(original_data.query("number_of_motorist_injured >= 1")[["on_street_name", "number_of_motorist_injured"]]
-                     .sort_values(by=['number_of_motorist_injured'], ascending=False)
-                     .rename(columns={"number_of_motorist_injured": "Motorist Ijured", "on_street_name":"Street Name"}, inplace=False)
-                     .dropna(how="any")[:5])
-        with col2:
-            st.write(original_data.query("number_of_motorist_killed >= 1")[["on_street_name", "number_of_motorist_killed"]]
-                     .sort_values(by=['number_of_motorist_killed'], ascending=False)
-                     .rename(columns={"number_of_motorist_killed": "Motorist Killed", "on_street_name":"Street Name"}, inplace=False)
-                     .dropna(how="any")[:5], use_column_width=True)
-        
-    st.sidebar.write("The data size in use is %i" % (5000))
+    st.sidebar.write("The data size in use is %i" % (50000))
+    rename_dict = {"number_of_persons_injured"       : "Persons Injured",
+                    "number_of_persons_killed"       : "Persons Killed",
+                    "number_of_pedestrians_injured"  : "Pedestrians Injured",
+                    "number_of_pedestrians_killed"   : "Pedestrians Killed",
+                    "number_of_cyclist_injured"      : "Cyclist Injured",
+                    "number_of_cyclist_killed"       : "Cyclist Killed",
+                    "number_of_motorist_injured"     : "Motorist Injured",
+                    "number_of_motorist_killed"      : "Motorist Killed",
+                    "contributing_factor_vehicle_1"  : "Contributing Factor1" }
+    
+    df = df.groupby('contributing_factor_vehicle_1').sum().sort_values(by=['number_of_persons_injured'], ascending=False)[:10]
+    st.header("Top 10 reason, Why most People are Injured ?")
+    df.reset_index(inplace = True)
+    df.rename(columns = rename_dict, inplace = True)
+    #fig = px.pie(df, values=df['Persons Injured'].values, names=df['Contributing Factor1'].values)
+    fig = go.Figure(data=[go.Pie(labels=df['Contributing Factor1'].values, values=df['Persons Injured'].values, pull=[0.2,0.1,0.1,0,0,0,0,0,0,0.4])])
+    fig.update_traces(textposition='inside', textinfo='value')
+    fig.update_layout(uniformtext_mode='hide', width = 700, height = 700, legend=dict(orientation="h",yanchor="bottom",y=1.02,xanchor="right",x=1))
+    st.write(fig)
     
     
 if __name__ == "__main__":
