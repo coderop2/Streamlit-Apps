@@ -11,9 +11,9 @@ This will be my very first attempt at making a tutorial from ground up, so pleas
 1. Analysis of Motor vehicle Collisions in New york
   (Courtesy of Coursera) - Data from https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Crashes/h9gi-nx95
   
-  In this app you will find implimentation of the following concepts:
+- In this app you will find implimentation of the following concepts:
   
-- Graphs with streamlit.
-- How to plot geographical information such Latitudes and longitute on a map with streamlit which internally uses a connection to openstreetmap library
-- Showing the whole code within the app boundry
-- Concept of caching
+- - Graphs with streamlit.
+- - How to plot geographical information such Latitudes and longitute on a map with streamlit which internally uses a connection to openstreetmap library
+- - Showing the whole code within the app boundry
+- - Concept of caching
