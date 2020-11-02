@@ -13,7 +13,7 @@ This will be my very first attempt at making a tutorial from ground up, so pleas
   
   In this app you will find implimentation of the following concepts:
   
-      - Graphs with streamlit.
-      - How to plot geographical information such Latitudes and longitute on a map with streamlit which internally uses a connection to openstreetmap library
-      - Showing the whole code within the app boundry
-      - Concept of caching
+- Graphs with streamlit.
+- How to plot geographical information such Latitudes and longitute on a map with streamlit which internally uses a connection to openstreetmap library
+- Showing the whole code within the app boundry
+- Concept of caching
