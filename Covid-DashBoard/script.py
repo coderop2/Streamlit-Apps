@@ -40,6 +40,28 @@ def main():
         #dataSize = st.sidebar.slider("Choose the Size of the dataset to be run", 5000, 15000)
         run_the_app()
         
+def getAllCountryPlot(data, top_ten_country):
+    ten_count = top_ten_country
+    fig = px.line(data.query("location in @ten_count"), x="date", y="total_cases", color = "location")
+    fig.update_traces(mode='markers+lines')
+    fig.update_xaxes(showline=False, gridwidth=2, gridcolor='#363636')
+    fig.update_yaxes(showline=False, gridwidth=2, gridcolor='#363636')
+    fig.update_layout(
+            font=dict(
+                family="Courier New, monospace",
+                size=14
+            ),
+            margin=dict(l=0, 
+                    r=0, 
+                    t=0, 
+                    b=0))
+    return fig
+
+def getPlot(data, col):
+    fig = px.line(data, x='date',y=col)
+    fig.update_traces(mode='markers+lines')
+    return fig
+        
 def run_the_app():
     st.title("Consolidated DashBoard since the OutBreak")
     st.markdown("This application is a Streamlit dashboard that can be used "
@@ -60,29 +82,27 @@ def run_the_app():
         x.reset_index(drop = True, inplace = True)
 
         top_ten = x[:10]
-        return data, top_ten
+        return data, top_ten, groups
     
-    data, top_ten = load_data()
+    data, top_ten, groups = load_data()
     
     countries = data.location.unique()
-    ten_count = top_ten.Country
-    fig = px.line(data.query("location in @ten_count"), x="date", y="total_cases", color = "location")
-    fig.update_traces(mode='markers+lines')
-    fig.update_xaxes(showline=False, linewidth=2, linecolor='#545454', gridcolor='#363636')
-    fig.update_yaxes(showline=False, linewidth=2, linecolor='#545454', gridcolor='#363636')
-    fig.update_layout(
-            font=dict(
-                family="Courier New, monospace",
-                size=14
-            ),
-            #paper_bgcolor=colors['background'],
-            #plot_bgcolor=colors['background'],
-            margin=dict(l=0, 
-                    r=0, 
-                    t=0, 
-                    b=0
-                    ))
-    st.write(fig)
+    
+    st.write(getAllCountryPlot(data, top_ten.Country))
+    
+    country = st.sidebar.selectbox("Choose the Country", countries)
+    
+    #col1, col2 = st.beta_columns(2)
+    country_data = groups.get_group(country)
+    column = st.radio("Choose", ['total_cases','total_deaths','new_cases'])
+    st.write('<style>div.Widget.row-widget.stRadio > div{flex-direction:row;}</style>', unsafe_allow_html=True)
+    st.write(getPlot(country_data, column))
+    #with col1:
+        #st.write(getPlot(country_data, "total_cases"))
+    #with col2:
+        #st.write(getPlot(country_data, "total_deaths"))
+    #with col3:
+       # st.write(getPlot(country_data, "new_cases"))
 
 
 if __name__ == "__main__":
