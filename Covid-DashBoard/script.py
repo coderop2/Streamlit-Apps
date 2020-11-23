@@ -43,10 +43,12 @@ def main():
 def getAllCountryPlot(data, top_ten_country):
     ten_count = top_ten_country
     fig = px.line(data.query("location in @ten_count"), x="date", y="total_cases", color = "location")
-    fig.update_traces(mode='markers+lines')
-    fig.update_xaxes(showline=False, gridwidth=2, gridcolor='#363636')
-    fig.update_yaxes(showline=False, gridwidth=2, gridcolor='#363636')
+    # fig.update_traces(mode='markers+lines')
+    fig.update_xaxes(showline=False, gridwidth=2, gridcolor='#ededed')
+    fig.update_yaxes(showline=False, gridwidth=2, gridcolor='#ededed')
     fig.update_layout(
+            paper_bgcolor = '#f7f7f7',
+            plot_bgcolor = '#f7f7f7',
             font=dict(
                 family="Courier New, monospace",
                 size=14
@@ -60,6 +62,13 @@ def getAllCountryPlot(data, top_ten_country):
 def getPlot(data, col):
     fig = px.line(data, x='date',y=col)
     fig.update_traces(mode='markers+lines')
+    fig.update_layout(
+            paper_bgcolor = '#f5f5f5',
+            plot_bgcolor = '#f5f5f5',
+            font=dict(
+                family="Courier New, monospace",
+                size=14
+            ))
     return fig
         
 def run_the_app():
@@ -67,7 +76,7 @@ def run_the_app():
     st.markdown("This application is a Streamlit dashboard that can be used "
                 "to analyze the spread of COVID-19 💥🚗")
 
-    @st.cache(suppress_st_warning=True, persist=True)
+    @st.cache(suppress_st_warning=True, persist=True, allow_output_mutation=True)
     def load_data():
         data = pd.read_csv(DATA_URL, parse_dates=['date'], usecols =[1,2,3,4,5,7,8,10,11,13,14,34,35,47])
         data.drop(data[data['continent'].isnull()].index, inplace = True)
@@ -91,19 +100,22 @@ def run_the_app():
     st.write(getAllCountryPlot(data, top_ten.Country))
     
     country = st.sidebar.selectbox("Choose the Country", countries)
-    
-    #col1, col2 = st.beta_columns(2)
+
+
     country_data = groups.get_group(country)
     column = st.radio("Choose", ['total_cases','total_deaths','new_cases'])
     st.write('<style>div.Widget.row-widget.stRadio > div{flex-direction:row;}</style>', unsafe_allow_html=True)
     st.write(getPlot(country_data, column))
-    #with col1:
-        #st.write(getPlot(country_data, "total_cases"))
-    #with col2:
-        #st.write(getPlot(country_data, "total_deaths"))
-    #with col3:
-       # st.write(getPlot(country_data, "new_cases"))
 
+    month_dict = {'January':1, 'February':2, 'March':3, 
+                  'April':4,'May':5,'June':6,'July':7,
+                  'August':8,'September':9,'October':10,
+                  'November':11,'December':12}
+    
+    st.sidebar.slider("Day", 0, 31, (5,10))
+    options = st.sidebar.multiselect(
+    'Choose Month(s)',
+    list(month_dict.keys()),['January','February'])
 
 if __name__ == "__main__":
     main()
