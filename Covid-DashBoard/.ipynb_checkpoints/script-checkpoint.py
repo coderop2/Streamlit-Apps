@@ -96,26 +96,52 @@ def run_the_app():
     data, top_ten, groups = load_data()
     
     countries = data.location.unique()
+    month_dict = {'January':1, 'February':2, 'March':3, 
+                  'April':4,'May':5,'June':6,'July':7,
+                  'August':8,'September':9,'October':10}
+                  # 'November':11,'December':12}
     
     st.write(getAllCountryPlot(data, top_ten.Country))
     
+    
     country = st.sidebar.selectbox("Choose the Country", countries)
 
-
-    country_data = groups.get_group(country)
-    column = st.radio("Choose", ['total_cases','total_deaths','new_cases'])
-    st.write('<style>div.Widget.row-widget.stRadio > div{flex-direction:row;}</style>', unsafe_allow_html=True)
-    st.write(getPlot(country_data, column))
-
-    month_dict = {'January':1, 'February':2, 'March':3, 
-                  'April':4,'May':5,'June':6,'July':7,
-                  'August':8,'September':9,'October':10,
-                  'November':11,'December':12}
+    st.sidebar.subheader('Choose Date Time range')
     
-    st.sidebar.slider("Day", 0, 31, (5,10))
+    day1, day2 = st.sidebar.slider("Day(s)", 1, 31, (5,10))
     options = st.sidebar.multiselect(
-    'Choose Month(s)',
-    list(month_dict.keys()),['January','February'])
+                                'Choose Month(s)',
+                                list(month_dict.keys()), list(month_dict.keys()))
+    
+    st.sidebar.write("November and December are disabled due to unavailability of data")
+    
+    country_data = groups.get_group(country)
+    
+    imp_columns = {'Total Cases':'total_cases',
+                   'Total Deaths':'total_deaths',
+                   'New Cases':'new_cases'}
+    
+    column = st.radio("Choose", list(imp_columns.keys()))
+    st.write('<style>div.Widget.row-widget.stRadio > div{flex-direction:row;}</style>', unsafe_allow_html=True)
+    
+    st.write(country_data)#[imp_columns.values()])
+    if len(options) == 0:
+        options = list(month_dict.keys())
+    temp = pd.DataFrame()
+    for i in options:
+        temp_day2 = day2
+        if i == 'February' and day2>29:
+            temp_day2 = 29
+        elif i in ['April', 'June', 'September'] and day2>30:
+            temp_day2 = 30
+        # st.write("Month: ",i," max day: ", temp_day2)
+        datetime = '2020-'+str(month_dict[i])+'-'+str(day1)
+        datetime2 = '2020-'+str(month_dict[i])+'-'+str(temp_day2)
+        t = country_data[(country_data['date']>=datetime)&(country_data['date']<=datetime2)]
+        temp = pd.concat([temp, t], ignore_index=True)
+        
+    st.write(getPlot(temp, imp_columns[column]))
 
+    
 if __name__ == "__main__":
     main()
