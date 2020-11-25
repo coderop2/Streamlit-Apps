@@ -79,6 +79,7 @@ def run_the_app():
     @st.cache(suppress_st_warning=True, persist=True, allow_output_mutation=True)
     def load_data():
         data = pd.read_csv(DATA_URL, parse_dates=['date'], usecols =[1,2,3,4,5,7,8,10,11,13,14,34,35,47])
+        data_country = pd.read_csv('dataFinal_Country.csv')
         data.drop(data[data['continent'].isnull()].index, inplace = True)
         data.drop(data[(data['new_cases'].isnull()) & (data['total_cases'].isnull())].index, inplace = True)
         
@@ -91,9 +92,14 @@ def run_the_app():
         x.reset_index(drop = True, inplace = True)
 
         top_ten = x[:10]
-        return data, top_ten, groups
+        
+        return data, top_ten, groups, data_country
     
-    data, top_ten, groups = load_data()
+    data, top_ten, groups, country_data = load_data()
+    
+    grouped = groups.agg({'total_cases':'max', 'total_deaths':'max'})
+    grouped.reset_index(inplace=True)
+    df = grouped.merge(country_data, how = 'left', left_on = 'location', right_on = 'name')
     
     countries = data.location.unique()
     month_dict = {'January':1, 'February':2, 'March':3, 
@@ -141,7 +147,36 @@ def run_the_app():
         temp = pd.concat([temp, t], ignore_index=True)
         
     st.write(getPlot(temp, imp_columns[column]))
-
+    mapbox_access_token = "Insert Your Token here"
     
+    # fig = px.scatter_mapbox(df, lat="latitude", lon="longitude", hover_name="location", hover_data=["location", "total_cases"],
+    #                     color_discrete_sequence=["fuchsia"], zoom=1, marker= go.scattermapbox.Marker(np.log(df['total_cases'])*4),
+    #         )
+    fig = go.Figure(go.Scattermapbox(
+                mode = "markers",
+                lon = df["longitude"], lat = df["latitude"],
+                marker = {'size': np.log(df['total_cases'])*4, "opacity": 0.35},
+                hovertext = [["Country/Region: {} <br>Total Cases: {} <br>Total Deaths: {} ".format(loc, conf, dea)]
+                          for loc, conf, dea in zip(df['location'], df['total_cases'], df['total_deaths'])]
+                ))
+    
+    fig.update_layout(mapbox_style       = "dark", 
+                      # mapbox_accesstoken = mapbox_access_token, 
+                      margin             = {"r":0,"t":0,"l":0,"b":0}, 
+                      font               = dict(color=colors['figure_text']),
+                      titlefont          = dict(color=colors['text']),
+                      hovermode          = "closest",
+                      legend             = dict(font=dict(size=10), orientation='h'),
+                      mapbox             = dict(accesstoken=mapbox_access_token,
+                                                style='mapbox://styles/mapbox/dark-v10',
+                                                center=dict(
+                                                    lon=78.96288,
+                                                    lat=20.593684),
+                                                zoom=1),
+                      autosize           = True)
+
+    st.write(fig)
+
+     
 if __name__ == "__main__":
     main()
