@@ -30,6 +30,24 @@ def get_file_content_as_string(path):
 #########################
 #   Plots for the APP   #
 #########################
+def magnify():
+    return [
+            dict(selector="th:nth-child(3):hover",
+                 props=[("font-size", "12pt"),
+                        ("color", "white"),("background-color", "blue")]),
+            dict(selector="th:nth-child(4):hover",
+                 props=[("font-size", "12pt"),
+                        ("color", "white"),("background-color", "red")]),
+            dict(selector="td:nth-child(3):hover",
+                 props=[("font-size", "12pt"),
+                        ("color", "white"),("background-color", "blue")]),
+            dict(selector="td:nth-child(4):hover",
+                 props=[("font-size", "12pt"),
+                        ("color", "white"),("background-color", "red")]),
+            dict(selector="tr:hover",
+                 props=[
+                       ("background-color", "lightblue")])]
+        
 def getAllCountryPlot(data, top_ten_country):
     ten_count = top_ten_country
     fig = px.line(data.query("location in @ten_count"), x="date", y="total_cases", color = "location")
@@ -122,7 +140,7 @@ def run_the_app():
                 mode = "markers",
                 lon = df["longitude"], lat = df["latitude"],
                 marker = {'size': np.log(df['total_cases'])*4, "opacity": 0.35},
-                hovertext = ["Country/Region: {} <br>Total Cases: {} <br>Total Deaths: {} ".format(loc, conf, dea)
+                hovertext = ["<br>Country : {} <br><br>Total Cases : {} <br>Total Deaths : {} ".format(loc, conf, dea)
                           for loc, conf, dea in zip(df['location'], df['total_cases'], df['total_deaths'])]
                 ))
     
@@ -147,29 +165,18 @@ def run_the_app():
             'total_cases':"Total Cases",
             'total_deaths':"Total Deaths"}
     df_display = country_data[list(cols.keys())].copy().reset_index(drop = True)
-    
+    df_display.columns = list(cols.values())
+    df_display.fillna(0,inplace = True)
     def highlight_col(x):
         r = 'color: red'
         b = 'color: blue'
         df1 = pd.DataFrame('', index=x.index, columns=x.columns)
         df1.iloc[:,3] = r
         df1.iloc[:,2] = b
-        return df1    
-    df_display = df_display.style.apply(highlight_col, axis=None).hide_index()
-    def magnify():
-        return [dict(selector="th",
-                     props=[("font-size", "4pt")]),
-                dict(selector="td",
-                     props=[('padding', "0em 0em")]),
-                dict(selector="th:hover",
-                     props=[("font-size", "12pt")]),
-                dict(selector="tr:hover td:hover",
-                     props=[('max-width', '200px'),
-                            ('font-size', '12pt')])]
+        return df1   
+        
+    df_display = df_display.style.apply(highlight_col, axis=None).hide_index().set_caption("Hover to magnify").set_precision(0).set_table_styles(magnify())
     
-    df_display = df_display.set_caption("Hover to magnify")\
-                           .set_precision(2)\
-                           .set_table_styles(magnify())
             
     if st.checkbox("Show Table View"):
         st.write(df_display)
@@ -186,7 +193,7 @@ def run_the_app():
             temp_day2 = 29
         elif i in ['April', 'June', 'September'] and day2>30:
             temp_day2 = 30
-        # st.write("Month: ",i," max day: ", temp_day2)
+        
         datetime = '2020-'+str(month_dict[i])+'-'+str(day1)
         datetime2 = '2020-'+str(month_dict[i])+'-'+str(temp_day2)
         t = country_data[(country_data['date']>=datetime)&(country_data['date']<=datetime2)]
