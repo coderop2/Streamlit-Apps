@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
+mapbox_access_token = "pk.eyJ1IjoiaGFyc2hpdGsiLCJhIjoiY2toeHUyc3hpMDN3ZzJ1b2E0MTV1MjcybyJ9.kdenbRD0dVz19JovVwwqDg"
 DATE_TIME = "date"
 DATA_URL = (
     "data.csv"
@@ -26,20 +27,9 @@ def get_file_content_as_string(path):
     response = open(url)
     return response.read()  
 
-def main():
-    st.sidebar.title("Welcome !!!")
-    st.sidebar.header("What to do")
-    
-    app_mode = st.sidebar.selectbox("Choose the app mode",
-        ["Show instructions", "Run the app", "Show the source code"])
-    if app_mode == "Show instructions":
-        st.sidebar.success('To continue select "Run the app".')
-    elif app_mode == "Show the source code":
-        st.code(get_file_content_as_string("script.py"))
-    elif app_mode == "Run the app":
-        #dataSize = st.sidebar.slider("Choose the Size of the dataset to be run", 5000, 15000)
-        run_the_app()
-        
+#########################
+#   Plots for the APP   #
+#########################
 def getAllCountryPlot(data, top_ten_country):
     ten_count = top_ten_country
     fig = px.line(data.query("location in @ten_count"), x="date", y="total_cases", color = "location")
@@ -95,6 +85,9 @@ def run_the_app():
         
         return data, top_ten, groups, data_country
     
+    #######################
+    #   Data Preperation  #
+    #######################
     data, top_ten, groups, country_data = load_data()
     
     grouped = groups.agg({'total_cases':'max', 'total_deaths':'max'})
@@ -106,31 +99,84 @@ def run_the_app():
                   'April':4,'May':5,'June':6,'July':7,
                   'August':8,'September':9,'October':10}
                   # 'November':11,'December':12}
-    
-    st.write(getAllCountryPlot(data, top_ten.Country))
-    
-    
-    country = st.sidebar.selectbox("Choose the Country", countries)
-
-    st.sidebar.subheader('Choose Date Time range')
-    
-    day1, day2 = st.sidebar.slider("Day(s)", 1, 31, (5,10))
-    options = st.sidebar.multiselect(
-                                'Choose Month(s)',
-                                list(month_dict.keys()), list(month_dict.keys()))
-    
-    st.sidebar.write("November and December are disabled due to unavailability of data")
-    
-    country_data = groups.get_group(country)
-    
+       
     imp_columns = {'Total Cases':'total_cases',
                    'Total Deaths':'total_deaths',
                    'New Cases':'new_cases'}
     
-    column = st.radio("Choose", list(imp_columns.keys()))
+    ##########################
+    #   Laying out the APP   #
+    ##########################
+    country = st.sidebar.selectbox("Choose the Country", countries)
+    st.sidebar.subheader('Choose Date Time range')
+    day1, day2 = st.sidebar.slider("Day(s)", 1, 31, (5,10))
+    options = st.sidebar.multiselect(
+                                'Choose Month(s)',
+                                list(month_dict.keys()), list(month_dict.keys()))
+    st.sidebar.write("November and December are disabled due to unavailability of data")
+    
+    country_data = groups.get_group(country)
+    
+    st.subheader("COVID OutBreak Country-Wise")
+    fig = go.Figure(go.Scattermapbox(
+                mode = "markers",
+                lon = df["longitude"], lat = df["latitude"],
+                marker = {'size': np.log(df['total_cases'])*4, "opacity": 0.35},
+                hovertext = ["Country/Region: {} <br>Total Cases: {} <br>Total Deaths: {} ".format(loc, conf, dea)
+                          for loc, conf, dea in zip(df['location'], df['total_cases'], df['total_deaths'])]
+                ))
+    
+    fig.update_layout(mapbox_style       = "dark", 
+                      margin             = {"r":0,"t":0,"l":0,"b":0}, 
+                      font               = dict(color=colors['figure_text']),
+                      titlefont          = dict(color=colors['text']),
+                      hovermode          = "closest",
+                      legend             = dict(font=dict(size=10), orientation='h'),
+                      mapbox             = dict(accesstoken=mapbox_access_token,
+                                                style='mapbox://styles/mapbox/dark-v10',
+                                                center=dict(
+                                                    lon=78.96288,
+                                                    lat=20.593684),
+                                                zoom=1),
+                      autosize           = True)
+
+    st.write(fig)
+    st.write(getAllCountryPlot(data, top_ten.Country))
+    cols = {'location':"Country",
+            'date':"Date",
+            'total_cases':"Total Cases",
+            'total_deaths':"Total Deaths"}
+    df_display = country_data[list(cols.keys())].copy().reset_index(drop = True)
+    
+    def highlight_col(x):
+        r = 'color: red'
+        b = 'color: blue'
+        df1 = pd.DataFrame('', index=x.index, columns=x.columns)
+        df1.iloc[:,3] = r
+        df1.iloc[:,2] = b
+        return df1    
+    df_display = df_display.style.apply(highlight_col, axis=None).hide_index()
+    def magnify():
+        return [dict(selector="th",
+                     props=[("font-size", "4pt")]),
+                dict(selector="td",
+                     props=[('padding', "0em 0em")]),
+                dict(selector="th:hover",
+                     props=[("font-size", "12pt")]),
+                dict(selector="tr:hover td:hover",
+                     props=[('max-width', '200px'),
+                            ('font-size', '12pt')])]
+    
+    df_display = df_display.set_caption("Hover to magnify")\
+                           .set_precision(2)\
+                           .set_table_styles(magnify())
+            
+    if st.checkbox("Show Table View"):
+        st.write(df_display)
+    
+    column = st.radio("Choose the Column to display data", list(imp_columns.keys()))
     st.write('<style>div.Widget.row-widget.stRadio > div{flex-direction:row;}</style>', unsafe_allow_html=True)
     
-    st.write(country_data)#[imp_columns.values()])
     if len(options) == 0:
         options = list(month_dict.keys())
     temp = pd.DataFrame()
@@ -147,36 +193,20 @@ def run_the_app():
         temp = pd.concat([temp, t], ignore_index=True)
         
     st.write(getPlot(temp, imp_columns[column]))
-    mapbox_access_token = "Insert Your Token here"
     
-    # fig = px.scatter_mapbox(df, lat="latitude", lon="longitude", hover_name="location", hover_data=["location", "total_cases"],
-    #                     color_discrete_sequence=["fuchsia"], zoom=1, marker= go.scattermapbox.Marker(np.log(df['total_cases'])*4),
-    #         )
-    fig = go.Figure(go.Scattermapbox(
-                mode = "markers",
-                lon = df["longitude"], lat = df["latitude"],
-                marker = {'size': np.log(df['total_cases'])*4, "opacity": 0.35},
-                hovertext = [["Country/Region: {} <br>Total Cases: {} <br>Total Deaths: {} ".format(loc, conf, dea)]
-                          for loc, conf, dea in zip(df['location'], df['total_cases'], df['total_deaths'])]
-                ))
+def main():
+    st.sidebar.title("COVID OUTBREAK !!!")
+    st.sidebar.header("What to do")
     
-    fig.update_layout(mapbox_style       = "dark", 
-                      # mapbox_accesstoken = mapbox_access_token, 
-                      margin             = {"r":0,"t":0,"l":0,"b":0}, 
-                      font               = dict(color=colors['figure_text']),
-                      titlefont          = dict(color=colors['text']),
-                      hovermode          = "closest",
-                      legend             = dict(font=dict(size=10), orientation='h'),
-                      mapbox             = dict(accesstoken=mapbox_access_token,
-                                                style='mapbox://styles/mapbox/dark-v10',
-                                                center=dict(
-                                                    lon=78.96288,
-                                                    lat=20.593684),
-                                                zoom=1),
-                      autosize           = True)
-
-    st.write(fig)
-
-     
+    app_mode = st.sidebar.selectbox("Choose the app mode",
+        ["Show instructions", "Run the app", "Show the source code"])
+    if app_mode == "Show instructions":
+        st.sidebar.success('To continue select "Run the app".')
+    elif app_mode == "Show the source code":
+        st.code(get_file_content_as_string("script.py"))
+    elif app_mode == "Run the app":
+        #dataSize = st.sidebar.slider("Choose the Size of the dataset to be run", 5000, 15000)
+        run_the_app()
+        
 if __name__ == "__main__":
     main()
