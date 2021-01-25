@@ -5,7 +5,7 @@ from ProcessQuestion import ProcessQuestion as PQ
 from Utilities import Utilities as UT
 
 @st.cache(suppress_st_warning=True, persist=True, allow_output_mutation=True)
-def loadData():
+def loadData(possible_db_name):
     docs = {}
     try:
         for name in possible_db_name:
@@ -28,9 +28,10 @@ def get_file_content_as_string(file):
 #         docs[name]['contextobj'] = PC(docs[name]['data'])
 #     return docs
 
-docs = loadData()
-instead_use_lemmanization = False
 possible_db_name = os.listdir('../dataset')
+docs = loadData(possible_db_name)
+instead_use_lemmanization = False
+placeholder = "Enter your Query here ..."
 stemmer = "No Stemmer"
 lemm_stemm_flag = "No"
 specific = False
@@ -46,7 +47,7 @@ lemm_or_stemm = st.sidebar.selectbox("Stemming or Lemmanization of the word", ["
 if lemm_or_stemm == "Lemmanization":
     title_header = "Choose lemmanization option"
     lemm_stemm_flag = st.sidebar.selectbox(title_header, ["Yes", "No"])
-else if lemm_or_stemm == "Stemming":
+elif lemm_or_stemm == "Stemming":
     title_header = "Choose Stemming option"
     lemm_stemm_flag = st.sidebar.selectbox(title_header, ["Yes", "No"])
 
@@ -56,9 +57,10 @@ if lemm_or_stemm == "Stemming" and lemm_stemm_flag == "Yes":
     stemmer = st.sidebar.selectbox("Choose which stemmer", ["PorterStemmer", "SnowBallStemmer"])
     
 removestopword_flag = st.sidebar.selectbox("Remove Stopwords", ["Yes", "No"])
-use_synonyms_flag = st.sidebar.selectbox("Use Synonyms", ["Yes", "No"])
+use_synonyms_flag = st.sidebar.selectbox("Use Synonyms", ["No", "Yes"])
 
 similarity_func = st.sidebar.selectbox("Which Sentence level similarity function to use", ["SkLearn", "Gensim", "User Made"])
+sent_t = st.sidebar.selectbox("Which Sentence level tokenizer to use", ["Base method", "Punkt"])
 show_file = st.sidebar.checkbox("Show Selected File")
 
 st.title("Hi There !!")
@@ -74,13 +76,13 @@ placeholder = "Enter your Query here ..."
 user_query = st.text_input("User Input", placeholder)
 
 # docs = processContextWithNewParams(docs, removestopword_flag, use_synonyms_flag, lemm_or_stemm, lemm_stemm_flag, stemmer, similarity_func)
-specificData = PC(docs[file_selected]['data'], yesnoDict[removestopword_flag], lemm_or_stemm, yesnoDict[lemm_stemm_flag], stemmer, similarity_func)
+specificData = PC(docs[file_selected]['data'], yesnoDict[removestopword_flag], lemm_or_stemm, yesnoDict[lemm_stemm_flag], stemmer, similarity_func, sent_t)
 
 greetPattern = re.compile("^\ *((hey)|(hi+)|((good\ )?morning|evening|afternoon)|(he((llo)|y+)))\ *$",re.I)
 exitPattern = re.compile("^\ *((bye*\ ?)|(see (you|ya) later))\ *$",re.I)
 
 if user_query != placeholder:
-    
+    # st.write(user_query)
     response = ""
     if not len(user_query) > 5:
         response = "Please enter valid question."
@@ -89,12 +91,11 @@ if user_query != placeholder:
     elif exitPattern.match(user_query):
         response = "See ya next time!"
         print("Bot-> ", response)
-        break
+        exit()
     else:
-        if specific:
-            objPQ = PQ(user_query, yesnoDict[removestopword_flag], yesnoDict[use_synonyms_flag])
-            response = specificData.getResults(objPQ)
+        objPQ = PQ(user_query, yesnoDict[removestopword_flag], yesnoDict[use_synonyms_flag], lemm_or_stemm, yesnoDict[lemm_stemm_flag], stemmer)
+        response = specificData.getResults(objPQ)
 
             # closestvector, obj = ut.GetClosestContextFile(1)
     st.write(response)
-    
+    user_query = placeholder

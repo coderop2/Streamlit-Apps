@@ -5,10 +5,16 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer
 
 class ProcessQuestion:
-    def __init__(self, question, remove_stopwords = True, use_synonyms = False):
+    def __init__(self, question, remove_stopwords, use_synonyms, lemm_or_stemm, use_stemmer_lemm, which_stemmer):
         self.question = question
         self.utl = Utilities()
-        self.stemmer = PorterStemmer()
+        self.stemmer = lambda x: x.lower()
+        if lemm_or_stemm == "Stemming" and which_stemmer == "PorterStemmer" and use_stemmer_lemm:
+            self.stemmer = PorterStemmer().stem
+        elif lemm_or_stemm == "Stemming" and which_stemmer == "SnowBallStemmer" and use_stemmer_lemm:
+            self.stemmer = SnowballStemmer().stem
+        elif lemm_or_stemm == "Lemmanization" and use_stemmer_lemm:
+            self.stemmer = WordNetLemmatizer().lemmatize
         self.remove_stopwords = remove_stopwords
         self.use_synonyms = use_synonyms
         self.stopwords = stopwords.words('english')
@@ -30,12 +36,12 @@ class ProcessQuestion:
             if tag[1] in self.questionTags:
                 continue
             else:
-                word = self.stemmer.stem(tag[0])
+                word = self.stemmer(tag[0])
                 words.append(tag[0])
                 if self.use_synonyms:
                     synonyms = set()
-                    syn2 = self.getSynonyms(tag[0])
-                    syn = self.getSynonyms(word)
+                    syn2 = self.utl.getSynonyms(tag[0])
+                    syn = self.utl.getSynonyms(word)
                     if len(syn) > 0:
                         synonyms.update(syn)
                     if len(syn2) > 0:
@@ -96,7 +102,7 @@ class ProcessQuestion:
             if self.remove_stopwords:
                 if token in self.stopwords:
                     continue
-            token = self.stemmer.stem(token)
+            token = self.stemmer(token)
             if wf.get(token, 0) == 0:
                 wf[token] = 1
             else:

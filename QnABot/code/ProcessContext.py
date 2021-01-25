@@ -4,19 +4,27 @@ from Utilities import Utilities
 from nltk.corpus import stopwords
 from nltk import pos_tag,ne_chunk
 from nltk.tokenize import word_tokenize, sent_tokenize
-from nltk.stem import PorterStemmer, SnowballStemmer
+from nltk.stem import PorterStemmer, SnowballStemmer, WordNetLemmatizer
 from nltk.tree import Tree
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import pandas as pd
 
 class ProcessContext:
-    def __init__(self, contextParas, remove_stopwords = True):
+    def __init__(self, contextParas, remove_stopwords, lemm_or_stemm, use_stemmer_lemm, which_stemmer, sim_func, sent_t):
         self.utl = Utilities()
-        self.sent_tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+        self.sent_tokenizer = sent_tokenize
+        self.sim_func = sim_func
+        if sent_t == "Punkt":
+            self.sent_tokenizer = nltk.data.load('tokenizers/punkt/english.pickle').tokenize
         self.remove_stopwords = remove_stopwords
         self.stopwords = stopwords.words('english')
-        self.stemmer = PorterStemmer()
+        self.stemmer = lambda x: x.lower()
+        if lemm_or_stemm == "Stemming" and which_stemmer == "PorterStemmer" and use_stemmer_lemm:
+            self.stemmer = PorterStemmer().stem
+        elif lemm_or_stemm == "Stemming" and which_stemmer == "SnowBallStemmer" and use_stemmer_lemm:
+            self.stemmer = SnowballStemmer().stem
+        elif lemm_or_stemm == "Lemmanization" and use_stemmer_lemm:
+            self.stemmer = WordNetLemmatizer().lemmatize
         self.numOfParas = len(contextParas)
         self.paraInfo, self.vocab, self.processed_vocab = self.processParas(contextParas)
         del contextParas
@@ -28,12 +36,11 @@ class ProcessContext:
         processed_vocab = set()
         
         for index in range(self.numOfParas):
-            
             docs[index] = {}
             docs[index]['para'] = paras[index]
             docs[index]['paraWords'] = word_tokenize(paras[index])
             vocab.update(docs[index]['paraWords'])
-            docs[index]['paraSentences'] = self.sent_tokenizer.tokenize(paras[index])
+            docs[index]['paraSentences'] = self.sent_tokenizer(paras[index])
             wf, processed_sentences, pv = self.processSentences(docs[index]['paraSentences'])
             docs[index]['paraWF'] = wf
             docs[index]['paraProcessedSentences'] = processed_sentences
@@ -48,7 +55,6 @@ class ProcessContext:
         
         self.contextIDF = {}
         for word in idf:
-            # Laplace smoothing
             self.contextIDF[word] = math.log((self.numOfParas+1)/idf[word])
             
         for index in range(self.numOfParas):
@@ -64,18 +70,6 @@ class ProcessContext:
             processed_sentence = []
             words = word_tokenize(sent)
             wf, processed_sentence = self.utl.processText(words, self.remove_stopwords, self.stemmer, wf)
-            # for word in words:
-            #     if not self.remove_stopwords:
-            #         continue
-            #     else:
-            #         if word in self.stopwords:
-            #             continue
-            #     word = self.stemmer.stem(word)
-            #     if wf.get(word, 0) == 0:
-            #         wf[word] = 1
-            #     else:
-            #         wf[word] += 1
-            #     processed_sentence.append(word)
             processed_vocab.update(processed_sentence)
             processed_sentences.append(" ".join(processed_sentence))
         return wf, processed_sentence, processed_vocab
@@ -93,11 +87,18 @@ class ProcessContext:
             return "Oops! Unable to find answer"
         
         relevantSentencesWithScores = self.getMostRelevantSentences(allSentences,PQ,1)
+        if self.sim_func in ["SkLearn", "Gensim"]:
+            sentencesWithSimScores = set()
+            sentencesWithSimScores.update(self.getMostSimilarSentences(PQ.question, allSentences))
+            while len(sentencesWithSimScores) < 5:
+                sentencesWithSimScores.update(self.getMostSimilarSentences(sentencesWithSimScores[0], allSentences, True))
+            relevantSentencesWithScores = list(sentencesWithSimScores)
+                
         sentences = [sentencewithscore[0] for sentencewithscore in relevantSentencesWithScores]
         # print(relevantSentences)
         
         answerType = PQ.questionDoc['Atype']
-        print(answerType)
+        # print(answerType)
         answer = " ".join(sentences[:2])
         
         if answerType in ["GPE", "PERSON", "ORGANIZATION"]:
@@ -106,7 +107,7 @@ class ProcessContext:
                 if entity[0] == answerType:
                     answer = entity[1]
                     # print(entities)
-                    ansTokens = [self.stemmer.stem(word) for word in word_tokenize(answer)]
+                    ansTokens = [self.stemmer(word) for word in word_tokenize(answer)]
                     if [(i in PQ.questionDoc['processedQuestion']) for i in ansTokens].count(True) >= 1:
                         continue
                     break
@@ -148,6 +149,26 @@ class ProcessContext:
         
         return sorted(rankedParas, key = lambda x: (x[1], x[0]), reverse = True)[:4]
     
+    def getMostSimilarSentences(self, question, sentences, second_time = False):
+        documents = [question]
+        documents.extend(sentences)
+        df = self.getsimilarityDF(documents)
+        res = cosine_similarity(df, df)
+        z = res[0,:]
+        y = []
+        for idx,i in enumerate(z):
+            if i > 0:
+                y.append((documents[idx], i))
+        arr = sorted(y, key =lambda x: (x[1], x[0]), reverse=True)
+        return arr[2:] if second_time else arr[1:]
+    
+    def getsimilarityDF(self, documents):
+        count_vectorizer = CountVectorizer(stop_words='english')
+        count_vectorizer = CountVectorizer()
+        sparse_matrix = count_vectorizer.fit_transform(documents)
+        doc_term_matrix = sparse_matrix.todense()
+        return doc_term_matrix
+
     # Thanks to the project made by vaibhav for the below Code 
     def getMostRelevantSentences(self, sentences, pQ, nGram=3):
         relevantSentences = []

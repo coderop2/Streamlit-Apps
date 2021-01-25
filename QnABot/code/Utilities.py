@@ -26,7 +26,7 @@ class Utilities:
         for word in tokenizedWords:
             if remove_stopwords and word in self.stopwords:
                 continue
-            word = stemmer.stem(word)
+            word = stemmer(word)
             if wf.get(word, 0) == 0:
                 wf[word] = 1
             else:
@@ -78,7 +78,7 @@ class Utilities:
                 chunks.append((entity["label"]," ".join(entity["chunk"])))
         return chunks
         
-    def getSysnonyms(self, word):
+    def getSynonyms(self, word):
         synonyms = [word]
         for syn in wordnet.synsets(word):
             for lemma in syn.lemmas():
