@@ -2,7 +2,7 @@ from Utilities import Utilities
 from nltk import pos_tag
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-from nltk.stem import PorterStemmer
+from nltk.stem import PorterStemmer, SnowballStemmer, WordNetLemmatizer
 
 class ProcessQuestion:
     def __init__(self, question, remove_stopwords, use_synonyms, lemm_or_stemm, use_stemmer_lemm, which_stemmer):
@@ -12,7 +12,7 @@ class ProcessQuestion:
         if lemm_or_stemm == "Stemming" and which_stemmer == "PorterStemmer" and use_stemmer_lemm:
             self.stemmer = PorterStemmer().stem
         elif lemm_or_stemm == "Stemming" and which_stemmer == "SnowBallStemmer" and use_stemmer_lemm:
-            self.stemmer = SnowballStemmer().stem
+            self.stemmer = SnowballStemmer(language='english').stem
         elif lemm_or_stemm == "Lemmanization" and use_stemmer_lemm:
             self.stemmer = WordNetLemmatizer().lemmatize
         self.remove_stopwords = remove_stopwords

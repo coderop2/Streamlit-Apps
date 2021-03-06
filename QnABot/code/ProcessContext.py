@@ -22,7 +22,7 @@ class ProcessContext:
         if lemm_or_stemm == "Stemming" and which_stemmer == "PorterStemmer" and use_stemmer_lemm:
             self.stemmer = PorterStemmer().stem
         elif lemm_or_stemm == "Stemming" and which_stemmer == "SnowBallStemmer" and use_stemmer_lemm:
-            self.stemmer = SnowballStemmer().stem
+            self.stemmer = SnowballStemmer(language='english').stem
         elif lemm_or_stemm == "Lemmanization" and use_stemmer_lemm:
             self.stemmer = WordNetLemmatizer().lemmatize
         self.numOfParas = len(contextParas)
